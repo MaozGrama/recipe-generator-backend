@@ -21,7 +21,8 @@ async function generateRecipes(pantryItems) {
             {
                 title: "מתכון לדוגמה",
                 ingredients: ["מצרכים לדוגמה"],
-                instructions: ["מערבבים את המצרכים", "מבשלים", "מגישים"],
+                instructions: [ "הAI בהפסקה - תחזרו עוד 24 שעות","מערבבים את המצרכים", "מבשלים", "מגישים"],
+                
             },
         ];
     }
@@ -31,8 +32,8 @@ IMPORTANT: Respond with ONLY valid JSON in this exact format:
 [
   {
     "title": "Recipe Name",
-    "ingredients": ["ingredient 1", "ingredient 2"],
-    "instructions": ["step 1", "step 2", "step 3"]
+    "ingredients": ["correct amount for ingredient 1", "correct amount for ingredient 2"],
+    "instructions": ["step 1", "step 2", "step 3",]
   }
 ]
 Do not include any text before or after the JSON. Only return the JSON array.`;
@@ -56,7 +57,7 @@ Do not include any text before or after the JSON. Only return the JSON array.`;
             return [
                 {
                     title: "מתכון לדוגמה",
-                    ingredients: ["מצרכים לדוגמה"],
+                    ingredients: ["מצרכים לדוגמה וכמויות"],
                     instructions: ["מערבבים את המצרכים", "מבשלים", "מגישים"],
                 },
             ];
