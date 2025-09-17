@@ -1,3 +1,4 @@
+// backend/utils/googleAIHelper.ts
 import { v1 } from "@google-ai/generativelanguage";
 import { GoogleAuth } from "google-auth-library";
 import dotenv from "dotenv";
@@ -99,70 +100,5 @@ Do not include any text before or after the JSON. Only return the JSON array.`;
         instructions: ["מערבבים את המצרכים", "מבשלים", "מגישים"],
       },
     ];
-  }
-}
-
-export async function generateSmartQuery(item: string, lat: number, lon: number): Promise<string> {
-  const currentDate = new Date().toLocaleDateString("he-IL");
-  const prompt = `
-    Create a precise Google search query in Hebrew to find current grocery deals for "${item}" in the vicinity of latitude ${lat}, longitude ${lon}.
-    Focus on major Israeli supermarkets like "שופרסל", "רמי לוי", and "יוחננוף".
-    The query should be short and use terms like "מבצע", "הנחה", "דיל". Also, include the current date "${currentDate}" to ensure fresh results.
-    Example: "מבצע שופרסל חלב יום חמישי".
-    Don't include any extra text, just the search query.
-  `;
-
-  const request = {
-    model: "models/gemini-1.5-flash",
-    contents: [
-      {
-        parts: [
-          {
-            text: prompt,
-          },
-        ],
-      },
-    ],
-  };
-  const [response] = (await client.generateContent(request)) as any;
-  return response.candidates?.[0]?.content?.parts?.[0]?.text || "מבצעים ";
-}
-
-export async function analyzeSearchResults(searchResults: any[], item: string): Promise<{ description: string; link: string | null }> {
-  const searchResultText = searchResults.map(s => `Title: ${s.title}\nSnippet: ${s.snippet}\nLink: ${s.link}`).join("\n\n---\n\n");
-  const prompt = `
-    Analyze the following search results to find the best current deal for "${item}".
-    Extract the deal description and a direct link to the source.
-    If no clear deal is found, state "לא נמצאו מבצעים".
-    Provide the output in a JSON object with the keys "description" and "link".
-    
-    Search Results:
-    ${searchResultText}
-  `;
-
-  const request = {
-    model: "models/gemini-1.5-flash",
-    contents: [
-      {
-        parts: [
-          {
-            text: prompt,
-          },
-        ],
-      },
-    ],
-  };
-  
-  try {
-    const [response] = (await client.generateContent(request)) as any;
-    const text = response.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) throw new Error("No text returned from AI");
-
-    let cleanText = text.trim().replace(/```json\s*/g, "").replace(/```\s*$/g, "");
-    const parsedJson = JSON.parse(cleanText);
-    return parsedJson;
-  } catch (error: any) {
-    console.error("Error parsing AI response for deals:", error.message);
-    return { description: "שגיאה בסיכום המבצעים", link: null };
   }
 }

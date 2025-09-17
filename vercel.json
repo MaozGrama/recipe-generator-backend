@@ -1,25 +1,29 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "dist/server.js",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "methods": ["OPTIONS"],
-      "headers": {
-        "Access-Control-Allow-Origin": "https://recipegeneratorfrontend.vercel.app",
-        "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type"
+    "version": 2,
+    "builds": [
+      {
+        "src": "server.ts",
+        "use": "@vercel/node",
+        "config": {
+          "includeFiles": ["routes/**", "utils/**", "models/**", "middleware/**", "dist/**"]
+        }
+      }
+    ],
+    "routes": [
+      {
+        "src": "/api/(.*)",
+        "methods": ["OPTIONS"],
+        "headers": {
+          "Access-Control-Allow-Origin": "https://recipegeneratorfrontend.vercel.app",
+          "Access-Control-Allow-Methods": "GET,POST,OPTIONS,DELETE",
+          "Access-Control-Allow-Headers": "Content-Type,Authorization",
+          "Access-Control-Allow-Credentials": "true"
+        },
+        "continue": true
       },
-      "continue": true
-    },
-    {
-      "src": "/api/(.*)",
-      "dest": "dist/server.js"
-    }
-  ]
-}
+      {
+        "src": "/api/(.*)",
+        "dest": "server.ts"
+      }
+    ]
+  }

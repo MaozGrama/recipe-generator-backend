@@ -1,10 +1,18 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = require("express");
+const express_1 = __importDefault(require("express"));
 const googleAIHelper_1 = require("../utils/googleAIHelper");
-const router = (0, express_1.Router)();
+const router = express_1.default.Router();
 router.post('/', async (req, res) => {
-    const { pantryItems } = req.body;
+    let { pantryItems } = req.body;
+    const isRandom = req.query.random === 'true';
+    if (isRandom) {
+        const allIngredients = ['חלב', 'קמח', 'ביצים', 'סוכר', 'שמן', 'מלח', 'פלפל', 'עגבניות'];
+        pantryItems = allIngredients.sort(() => Math.random() - 0.5).slice(0, Math.floor(Math.random() * 3) + 2);
+    }
     if (!Array.isArray(pantryItems) || pantryItems.length === 0) {
         return res.status(400).json({ success: false, error: "Please provide pantry items" });
     }
