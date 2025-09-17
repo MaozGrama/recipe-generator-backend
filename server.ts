@@ -22,11 +22,6 @@ app.use((req, res, next) => {
 
 app.use(cors({
   origin: (origin, callback) => {
-    const allowedOrigins = [
-      "https://recipegeneratorfrontend.vercel.app",
-      "https://recipegeneratorfrontend-maozgrama-maozs-projects-54d44777.vercel.app",
-      "http://localhost:5173"
-    ];
     console.log(`[${new Date().toISOString()}] Checking origin: ${origin}`);
     if (!origin || allowedOrigins.includes(origin)) {
       console.log(`[${new Date().toISOString()}] Origin ${origin} allowed`);
@@ -40,10 +35,26 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
 }));
-// Remove app.options("*", cors()) if not needed, as vercel.json handles OPTIONS
+
 app.use(express.json());
 
-mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/recipe-generator")
+const mongooseOptions = {
+  serverSelectionTimeoutMS: 5000,
+  connectTimeoutMS: 20000, // Increased to 20 seconds for Vercel
+  socketTimeoutMS: 45000,
+  maxPoolSize: 10,
+  autoIndex: false,
+  retryWrites: true,
+  retryReads: true,
+  bufferCommands: false,
+  bufferMaxEntries: 0
+};
+
+// Log the URI being used (for debugging)
+const uri = process.env.MONGODB_URI || "mongodb://localhost:27017/recipe-generator";
+console.log(`[${new Date().toISOString()}] Connecting to MongoDB with URI: ${uri}`);
+
+mongoose.connect(uri, mongooseOptions)
   .then(() => console.log("Connected to MongoDB"))
   .catch((err) => console.error("MongoDB connection error:", err));
 
