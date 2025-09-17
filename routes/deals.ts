@@ -1,5 +1,5 @@
 import express, { Request, Response } from "express";
-import axios, { AxiosError } from "axios";
+import axios from "axios"; // Remove specific AxiosError and AxiosResponse imports
 import { z } from "zod";
 import Bottleneck from "bottleneck";
 import { isHebrew } from "../utils/text";
@@ -28,40 +28,49 @@ if (!GOOGLE_CSE_API_KEY || !GOOGLE_CSE_CX) {
 
 // Create a rate limiter for Google API requests
 const limiter = new Bottleneck({
-  minTime: 200, // Minimum time between requests (in ms) to avoid hitting rate limits
-  maxConcurrent: 5, // Maximum number of concurrent requests
-});
+  minTime: 200,
+  maxConcurrent: 5,
+}) as Bottleneck; // Type assertion
 
-const searchGoogle = async (query: string) => {
+// Define the expected response type from Google Custom Search API
+interface GoogleSearchResult {
+  items?: Array<{
+    title: string;
+    link: string;
+    snippet: string;
+  }>;
+}
+
+const searchGoogle = async (query: string): Promise<{ title: string; link: string; snippet: string } | undefined> => {
   const url = "https://www.googleapis.com/customsearch/v1";
   const params = {
     q: query,
     cx: GOOGLE_CSE_CX,
     key: GOOGLE_CSE_API_KEY,
-    lr: isHebrew(query) ? "lang_iw" : undefined, // Set language for Hebrew searches
+    lr: isHebrew(query) ? "lang_iw" : undefined,
   };
 
   try {
-    console.log(`Sending search request to Google with query: "${query}"`);
-    const response = await limiter.schedule(() => axios.get(url, { params }));
-    console.log("Successfully received response from Google.");
+    console.log(`[${new Date().toISOString()}] Sending search request to Google with query: "${query}"`);
+    const response = await limiter.schedule(() => axios.get<GoogleSearchResult>(url, { params }));
+    console.log(`[${new Date().toISOString()}] Successfully received response from Google.`);
 
     const searchResult = response.data;
     if (searchResult.items && searchResult.items.length > 0) {
-      console.log(`Found ${searchResult.items.length} search results.`);
+      console.log(`[${new Date().toISOString()}] Found ${searchResult.items.length} search results.`);
       return {
         title: searchResult.items[0].title,
         link: searchResult.items[0].link,
         snippet: searchResult.items[0].snippet,
       };
     } else {
-      console.warn("No search results returned from Google for this query. The API call was successful but found no deals.");
-      return undefined; // Explicitly return undefined if no items are found.
+      console.warn(`[${new Date().toISOString()}] No search results returned from Google for this query.`);
+      return undefined;
     }
-  } catch (error: unknown) {
-    if (error instanceof AxiosError) {
+  } catch (error: any) { // Use 'any' temporarily to bypass strict typing, refine later
+    if (axios.isAxiosError(error)) {
       console.error(
-        `Error on attempt 2 for ${query}: AxiosError: ${error.message}, status: ${error.response?.status}`
+        `[${new Date().toISOString()}] Error on attempt for ${query}: AxiosError: ${error.message}, status: ${error.response?.status}`
       );
       if (error.response?.status === 403) {
         console.error("403 Forbidden: Check your API key and Custom Search Engine ID.");
@@ -69,7 +78,7 @@ const searchGoogle = async (query: string) => {
         console.error("400 Bad Request: Check your query parameters.");
       }
     } else {
-      console.error(`Error searching for ${query}:`, error);
+      console.error(`[${new Date().toISOString()}] Error searching for ${query}:`, error);
     }
     throw error;
   }
@@ -77,7 +86,6 @@ const searchGoogle = async (query: string) => {
 
 const getDealsForItems = async (items: string[], location: { lat: number; lon: number } | undefined) => {
   const deals: { [key: string]: { description: string; link: string } } = {};
-  // Map of supermarket names to their domains for more precise searching
   const supermarkets = [
     { name: "שופרסל", domain: "shufersal.co.il" },
     { name: "רמי לוי", domain: "ramilevi.co.il" },
@@ -85,44 +93,35 @@ const getDealsForItems = async (items: string[], location: { lat: number; lon: n
     { name: "ויקטורי", domain: "victory.co.il" },
   ];
 
-  await Promise.all(items.map(async (item) => {
-    // Loop through each supermarket to find the best deal
-    for (const supermarket of supermarkets) {
-      // First, try a very specific query using exact phrases
-      const strictQuery = `"${item}" "מבצע" "מחיר" site:${supermarket.domain}`;
-      try {
-        const result = await searchGoogle(strictQuery);
-        if (result) {
-          console.log(`Found a specific deal for "${item}" at ${supermarket.name}.`);
-          deals[item] = {
-            description: result.title,
-            link: result.link,
-          };
-          // Found a deal, so move to the next item
-          return;
+  await Promise.all(
+    items.map(async (item) => {
+      for (const supermarket of supermarkets) {
+        const strictQuery = `"${item}" "מבצע" "מחיר" site:${supermarket.domain}`;
+        try {
+          const result = await searchGoogle(strictQuery);
+          if (result) {
+            console.log(`[${new Date().toISOString()}] Found a specific deal for "${item}" at ${supermarket.name}.`);
+            deals[item] = { description: result.title, link: result.link };
+            return;
+          }
+        } catch (err: any) {
+          console.error(`[${new Date().toISOString()}] Failed to get deal for ${item} from ${supermarket.name} with strict query:`, err);
         }
-      } catch (err) {
-        console.error(`Failed to get deal for ${item} from ${supermarket.name} with strict query:`, err);
-      }
 
-      // If the strict query fails, try a broader fallback query
-      const fallbackQuery = `${item} מבצע site:${supermarket.domain}`;
-      try {
-        const result = await searchGoogle(fallbackQuery);
-        if (result) {
-          console.log(`Found a fallback deal for "${item}" at ${supermarket.name}.`);
-          deals[item] = {
-            description: result.title,
-            link: result.link,
-          };
-          // Found a deal, so move to the next item
-          return;
+        const fallbackQuery = `${item} מבצע site:${supermarket.domain}`;
+        try {
+          const result = await searchGoogle(fallbackQuery);
+          if (result) {
+            console.log(`[${new Date().toISOString()}] Found a fallback deal for "${item}" at ${supermarket.name}.`);
+            deals[item] = { description: result.title, link: result.link };
+            return;
+          }
+        } catch (err: any) {
+          console.error(`[${new Date().toISOString()}] Failed to get deal for ${item} from ${supermarket.name} with fallback query:`, err);
         }
-      } catch (err) {
-        console.error(`Failed to get deal for ${item} from ${supermarket.name} with fallback query:`, err);
       }
-    }
-  }));
+    })
+  );
   return deals;
 };
 
