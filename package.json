@@ -9,21 +9,21 @@
   "dependencies": {
     "@google-ai/generativelanguage": "^3.4.0",
     "@google/generative-ai": "^0.21.0",
+    "@types/axios": "^0.14.4",
     "axios": "^1.12.2",
     "bcryptjs": "^2.4.3",
     "bottleneck": "^2.19.5",
     "cors": "^2.8.5",
-    "express": "^4.19.2",
+    "express": "^4.21.2",
     "google-auth-library": "^10.3.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.7.0",
-    "zod": "^4.1.8"
+    "zod": "^4.1.9"
   },
   "devDependencies": {
-    "@types/axios": "^0.9.36",
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.17",
-    "@types/express": "^4.17.21",
+    "@types/express": "^4.17.23",
     "@types/jsonwebtoken": "^9.0.7",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.2.2"
