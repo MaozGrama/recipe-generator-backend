@@ -12,15 +12,27 @@ const app = express();
 const allowedOrigins = [
   "https://recipegeneratorfrontend.vercel.app",
   "https://recipegeneratorfrontend-maozgrama-maozs-projects-54d44777.vercel.app",
-  "http://localhost:5173" // For local development
+  "http://localhost:5173"
 ];
+
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} - Origin: ${req.get("Origin")}`);
+  next();
+});
 
 app.use(cors({
   origin: (origin, callback) => {
-    console.log("Request Origin:", origin);
+    const allowedOrigins = [
+      "https://recipegeneratorfrontend.vercel.app",
+      "https://recipegeneratorfrontend-maozgrama-maozs-projects-54d44777.vercel.app",
+      "http://localhost:5173"
+    ];
+    console.log(`[${new Date().toISOString()}] Checking origin: ${origin}`);
     if (!origin || allowedOrigins.includes(origin)) {
+      console.log(`[${new Date().toISOString()}] Origin ${origin} allowed`);
       callback(null, true);
     } else {
+      console.log(`[${new Date().toISOString()}] Origin ${origin} rejected`);
       callback(new Error("Not allowed by CORS"));
     }
   },
@@ -28,6 +40,7 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
 }));
+// Remove app.options("*", cors()) if not needed, as vercel.json handles OPTIONS
 app.use(express.json());
 
 mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/recipe-generator")
@@ -37,10 +50,9 @@ mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost:27017/recipe-ge
 app.use("/api/recipes", recipesRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/favorites", favoritesRouter);
-app.use("/api", ratingsRouter); // Note: This mounts ratings at /api, which might overlap
+app.use("/api", ratingsRouter);
 app.use("/api/deals", dealsRouter);
 
-// Test route
 app.get("/api/test", (req, res) => res.json({ message: "Server is running" }));
 
 const port = process.env.PORT || 5000;
