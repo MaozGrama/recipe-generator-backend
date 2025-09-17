@@ -40,8 +40,8 @@ app.use(express.json());
 
 const mongooseOptions = {
   serverSelectionTimeoutMS: 5000,
-  connectTimeoutMS: 20000, // Increased to 20 seconds for Vercel
-  socketTimeoutMS: 45000,
+  connectTimeoutMS: 30000,
+  socketTimeoutMS: 60000,
   maxPoolSize: 10,
   autoIndex: false,
   retryWrites: true,
@@ -50,13 +50,25 @@ const mongooseOptions = {
   bufferMaxEntries: 0
 };
 
-// Log the URI being used (for debugging)
 const uri = process.env.MONGODB_URI || "mongodb://localhost:27017/recipe-generator";
 console.log(`[${new Date().toISOString()}] Connecting to MongoDB with URI: ${uri}`);
 
-mongoose.connect(uri, mongooseOptions)
-  .then(() => console.log("Connected to MongoDB"))
-  .catch((err) => console.error("MongoDB connection error:", err));
+(async () => {
+  try {
+    await mongoose.connect(uri, mongooseOptions);
+    console.log(`[${new Date().toISOString()}] MongoDB connected`);
+  } catch (err) {
+    console.error(`[${new Date().toISOString()}] MongoDB initial connection error:`, err);
+  }
+})();
+
+mongoose.connection.on('error', (err) => {
+  console.error(`[${new Date().toISOString()}] MongoDB connection error:`, err);
+});
+
+mongoose.connection.on('connected', () => {
+  console.log(`[${new Date().toISOString()}] MongoDB connected`);
+});
 
 app.use("/api/recipes", recipesRouter);
 app.use("/api/auth", authRouter);
