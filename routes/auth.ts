@@ -29,9 +29,9 @@ router.post("/signup", async (req, res) => {
     );
     res.json({ token, username: user.username });
   } catch (err) {
-    console.error("Signup error:", err);
-    if (err instanceof Error && err.name === "ValidationError") {
-      return res.status(400).json({ error: err.message });
+    console.error("Signup error:", (err as Error).stack); // Type assertion to Error
+    if ((err as Error).name === "ValidationError") {
+      return res.status(400).json({ error: (err as Error).message });
     }
     res.status(500).json({ error: "Failed to sign up" });
   }
@@ -51,23 +51,19 @@ router.post("/login", async (req, res) => {
     const token = jwt.sign(
       { id: user._id, email: user.email, username: user.username },
       process.env.JWT_SECRET || "your-secret-key",
-      { expiresIn: "1h" }
+      { expiresIn: "2h" }
     );
     res.json({ token, username: user.username });
   } catch (err) {
-    console.error("Login error:", err);
-    if (err instanceof Error) {
-      res.status(500).json({ error: err.message });
-    } else {
-      res.status(500).json({ error: "Failed to log in" });
-    }
+    console.error("Login error:", (err as Error).stack);
+    res.status(500).json({ error: (err as Error).message || "Failed to log in" });
   }
 });
 
 router.post("/ratings", async (req, res) => {
-  console.log("Rating request received:", req.body); // Debug log
+  console.log("Rating request received:", req.body);
   const { recipeTitle, rating } = req.body;
-  const token = req.headers.authorization?.split(" ")[1]; // Expect "Bearer <token>"
+  const token = req.headers.authorization?.split(" ")[1];
 
   if (!token) return res.status(401).json({ error: "No token provided" });
   if (!recipeTitle || rating === undefined || rating < 1 || rating > 5) {
@@ -79,7 +75,6 @@ router.post("/ratings", async (req, res) => {
     const user = await User.findById(decoded.id);
     if (!user) return res.status(404).json({ error: "User not found" });
 
-    // Update or add rating
     const existingRatingIndex = user.ratings.findIndex((r) => r.recipeTitle === recipeTitle);
     if (existingRatingIndex >= 0) {
       user.ratings[existingRatingIndex].rating = rating;
@@ -88,14 +83,13 @@ router.post("/ratings", async (req, res) => {
     }
     await user.save();
 
-    res.json({ success: true, rating });
+    res.json({ success: true, rating, ratings: user.ratings });
   } catch (err) {
-    console.error("Rating error:", err);
-    if (err instanceof Error) {
-      res.status(500).json({ error: err.message });
-    } else {
-      res.status(500).json({ error: "Failed to set rating" });
+    console.error("Rating error:", (err as Error).stack);
+    if ((err as Error).name === "JsonWebTokenError") {
+      return res.status(401).json({ error: "Invalid token" });
     }
+    res.status(500).json({ error: (err as Error).message || "Failed to set rating" });
   }
 });
 
