@@ -10,7 +10,7 @@ import dealsRouter from "./routes/deals";
 const app = express();
 
 const allowedOrigins = [
-  "https://recipegeneratorfrontend-8fmowwzn4-maozs-projects-54d44777.vercel.app",
+  "https://recipegeneratorfrontend.vercel.app",
   "http://localhost:5173"
 ];
 
