@@ -45,8 +45,8 @@ const mongooseOptions = {
   autoIndex: false,
   retryWrites: true,
   retryReads: true,
-  bufferCommands: false,
-  bufferMaxEntries: 0
+  bufferCommands: false
+  // Removed bufferMaxEntries as it's not needed with bufferCommands: false
 };
 
 const uri = process.env.MONGODB_URI || "mongodb://localhost:27017/recipe-generator";
@@ -61,7 +61,7 @@ const connectDb = async () => {
     console.log(`[${new Date().toISOString()}] MongoDB connected`);
   } catch (err) {
     console.error(`[${new Date().toISOString()}] MongoDB connection error:`, err);
-    throw err; // Re-throw to prevent startup if connection fails
+    throw err;
   }
 };
 
