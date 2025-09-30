@@ -46,7 +46,6 @@ const mongooseOptions = {
   retryWrites: true,
   retryReads: true,
   bufferCommands: false
-  // Removed bufferMaxEntries as it's not needed with bufferCommands: false
 };
 
 const uri = process.env.MONGODB_URI || "mongodb://localhost:27017/recipe-generator";
@@ -65,7 +64,6 @@ const connectDb = async () => {
   }
 };
 
-// Middleware to check connection status
 app.use((req, res, next) => {
   if (!isConnected) {
     console.log(`[${new Date().toISOString()}] Rejecting request - MongoDB not connected`);
@@ -74,13 +72,12 @@ app.use((req, res, next) => {
   next();
 });
 
-// Set up routes only after connection
 (async () => {
   await connectDb();
   app.use("/api/recipes", recipesRouter);
   app.use("/api/auth", authRouter);
   app.use("/api/favorites", favoritesRouter);
-  app.use("/api", ratingsRouter);
+  app.use("/api/ratings", ratingsRouter); // Changed from /api to /api/ratings
   app.use("/api/deals", dealsRouter);
 
   app.get("/api/test", (req, res) => res.json({ message: "Server is running" }));
