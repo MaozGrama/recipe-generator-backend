@@ -8,38 +8,87 @@ const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const User_1 = __importDefault(require("../models/User"));
 const router = (0, express_1.Router)();
-router.post('/signup', async (req, res) => {
-    const { email, password } = req.body;
-    if (!email || !password)
-        return res.status(400).json({ error: 'Email and password required' });
+router.post("/signup", async (req, res) => {
+    console.log("Signup request received:", req.body);
+    const { email, password, username } = req.body;
+    if (!email || !password || !username) {
+        return res.status(400).json({ error: "Email, password, and username are required" });
+    }
     try {
-        const existingUser = await User_1.default.findOne({ email });
-        if (existingUser)
-            return res.status(400).json({ error: 'Email already exists' });
+        const existingUser = await User_1.default.findOne({ $or: [{ email }, { username }] });
+        if (existingUser) {
+            return res.status(400).json({ error: "Email or username already exists" });
+        }
         const hashedPassword = await bcryptjs_1.default.hash(password, 10);
-        const user = new User_1.default({ email, password: hashedPassword, favorites: [] });
+        const user = new User_1.default({ email, password: hashedPassword, username, favorites: [], ratings: [] });
         await user.save();
-        const token = jsonwebtoken_1.default.sign({ id: user._id }, process.env.JWT_SECRET || 'your-secret-key', { expiresIn: '1h' });
-        res.json({ token });
+        const token = jsonwebtoken_1.default.sign({ id: user._id, email: user.email, username: user.username }, process.env.JWT_SECRET || "your-secret-key", { expiresIn: "2h" });
+        res.json({ token, username: user.username });
     }
     catch (err) {
-        res.status(500).json({ error: 'Failed to sign up' });
+        console.error("Signup error:", err);
+        if (err instanceof Error && err.name === "ValidationError") {
+            return res.status(400).json({ error: err.message });
+        }
+        res.status(500).json({ error: "Failed to sign up" });
     }
 });
-router.post('/login', async (req, res) => {
+router.post("/login", async (req, res) => {
+    console.log("Login request received:", req.body);
     const { email, password } = req.body;
     if (!email || !password)
-        return res.status(400).json({ error: 'Email and password required' });
+        return res.status(400).json({ error: "Email and password required" });
     try {
         const user = await User_1.default.findOne({ email });
         if (!user || !(await bcryptjs_1.default.compare(password, user.password))) {
-            return res.status(401).json({ error: 'Invalid credentials' });
+            return res.status(401).json({ error: "Invalid credentials" });
         }
-        const token = jsonwebtoken_1.default.sign({ id: user._id }, process.env.JWT_SECRET || 'your-secret-key', { expiresIn: '1h' });
-        res.json({ token });
+        const token = jsonwebtoken_1.default.sign({ id: user._id, email: user.email, username: user.username }, process.env.JWT_SECRET || "your-secret-key", { expiresIn: "1h" });
+        res.json({ token, username: user.username });
     }
     catch (err) {
-        res.status(500).json({ error: 'Failed to log in' });
+        console.error("Login error:", err);
+        if (err instanceof Error) {
+            res.status(500).json({ error: err.message });
+        }
+        else {
+            res.status(500).json({ error: "Failed to log in" });
+        }
+    }
+});
+router.post("/ratings", async (req, res) => {
+    console.log("Rating request received:", req.body); // Debug log
+    const { recipeTitle, rating } = req.body;
+    const token = req.headers.authorization?.split(" ")[1]; // Expect "Bearer <token>"
+    if (!token)
+        return res.status(401).json({ error: "No token provided" });
+    if (!recipeTitle || rating === undefined || rating < 1 || rating > 5) {
+        return res.status(400).json({ error: "Valid recipeTitle and rating (1-5) are required" });
+    }
+    try {
+        const decoded = jsonwebtoken_1.default.verify(token, process.env.JWT_SECRET || "your-secret-key");
+        const user = await User_1.default.findById(decoded.id);
+        if (!user)
+            return res.status(404).json({ error: "User not found" });
+        // Update or add rating
+        const existingRatingIndex = user.ratings.findIndex((r) => r.recipeTitle === recipeTitle);
+        if (existingRatingIndex >= 0) {
+            user.ratings[existingRatingIndex].rating = rating;
+        }
+        else {
+            user.ratings.push({ recipeTitle, rating });
+        }
+        await user.save();
+        res.json({ success: true, rating });
+    }
+    catch (err) {
+        console.error("Rating error:", err);
+        if (err instanceof Error) {
+            res.status(500).json({ error: err.message });
+        }
+        else {
+            res.status(500).json({ error: "Failed to set rating" });
+        }
     }
 });
 exports.default = router;

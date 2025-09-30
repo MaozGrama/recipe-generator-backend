@@ -37,10 +37,25 @@ const mongoose_1 = __importStar(require("mongoose"));
 const UserSchema = new mongoose_1.Schema({
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    favorites: [{
-            title: String,
-            ingredients: [String],
-            instructions: [String]
-        }]
+    username: { type: String, required: true, unique: true },
+    favorites: [
+        {
+            title: { type: String, required: true },
+            ingredients: [{ type: String, required: true }],
+            instructions: [{ type: String, required: true }],
+        },
+    ],
+    ratings: [
+        {
+            recipeTitle: { type: String, required: true },
+            rating: { type: Number, required: true, min: 1, max: 5 },
+        },
+    ],
+    shoppingList: [
+        {
+            item: { type: String, required: true },
+            count: { type: Number, required: true, default: 1 },
+        },
+    ],
 });
-exports.default = mongoose_1.default.model('User', UserSchema);
+exports.default = mongoose_1.default.model("User", UserSchema);
