@@ -4,14 +4,14 @@ import User from "../models/User";
 
 const router = Router();
 
-router.post("/ratings", async (req, res) => {
+router.post("/", async (req, res) => {
   console.log("Rating request received:", req.body);
   const { recipeTitle, rating } = req.body;
   const token = req.headers.authorization?.split(" ")[1];
 
   if (!token) return res.status(401).json({ error: "No token provided" });
   if (!recipeTitle || rating === undefined || rating < 1 || rating > 5) {
-    console.log("Validation failed:", { recipeTitle, rating }); // Debug
+    console.log("Validation failed:", { recipeTitle, rating });
     return res.status(400).json({ error: "Valid recipeTitle and rating (1-5) are required" });
   }
 
@@ -27,7 +27,7 @@ router.post("/ratings", async (req, res) => {
       user.ratings.push({ recipeTitle, rating });
     }
     await user.save();
-    console.log("User ratings after save:", user.ratings); // Debug
+    console.log("User ratings after save:", user.ratings);
 
     res.json({ success: true, rating });
   } catch (err) {
@@ -40,7 +40,7 @@ router.post("/ratings", async (req, res) => {
   }
 });
 
-router.get("/ratings/average", async (req, res) => {
+router.get("/average", async (req, res) => {
   const { recipeTitle } = req.query;
 
   if (!recipeTitle || typeof recipeTitle !== "string") {
@@ -59,7 +59,7 @@ router.get("/ratings/average", async (req, res) => {
     }, 0);
     const averageRating = totalRatings / users.length;
 
-    res.json({ averageRating: Number(averageRating.toFixed(1)) }); // Round to 1 decimal place
+    res.json({ averageRating: Number(averageRating.toFixed(1)) });
   } catch (err) {
     console.error("Average rating error:", err);
     if (err instanceof Error) {
