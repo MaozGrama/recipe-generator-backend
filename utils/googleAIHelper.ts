@@ -1,5 +1,4 @@
-import { v1 } from "@google-ai/generativelanguage";
-import { GoogleAuth } from "google-auth-library";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -7,8 +6,8 @@ dotenv.config();
 const API_KEY = process.env.GOOGLE_API_KEY;
 if (!API_KEY) throw new Error("Missing GOOGLE_API_KEY in environment variables");
 
-const auth = new GoogleAuth().fromAPIKey(API_KEY);
-const client = new v1.GenerativeServiceClient({ authClient: auth });
+const genAI = new GoogleGenerativeAI(API_KEY);
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" }); // Updated to valid model
 
 export interface Recipe {
   title: string;
@@ -29,33 +28,21 @@ export async function generateRecipes(pantryItems: string[]): Promise<Recipe[]> 
   }
 
   const promptText = `Create 3 simple recipes using these ingredients: ${pantryItems.join(", ")}. 
-also if the item is in hebrew respond in HEBREW
-IMPORTANT: Respond with ONLY valid JSON in this exact format:
-[
-  {
-    "title": "Recipe Name",
-    "ingredients": ["ingredient 1", "ingredient 2"],
-    "instructions": ["step 1", "step 2", "step 3"]
-  }
-]
-Do not include any text before or after the JSON. Only return the JSON array.`;
+  Also, if the item is in Hebrew, respond in Hebrew.
+  IMPORTANT: Respond with ONLY valid JSON in this exact format:
+  [
+    {
+      "title": "Recipe Name",
+      "ingredients": ["ingredient 1", "ingredient 2"],
+      "instructions": ["step 1", "step 2", "step 3"]
+    }
+  ]
+  Do not include any text before or after the JSON. Only return the JSON array.`;
 
   try {
-    const request = {
-      model: "models/gemini-1.5-flash-8b",
-      contents: [
-        {
-          parts: [
-            {
-              text: promptText,
-            },
-          ],
-        },
-      ],
-    };
-
-    const [response] = (await client.generateContent(request)) as any;
-    const text = response.candidates?.[0]?.content?.parts?.[0]?.text;
+    const result = await model.generateContent(promptText);
+    const response = await result.response;
+    const text = response.text();
 
     if (!text) {
       console.warn("No AI text returned, using fallback recipe");
@@ -112,20 +99,14 @@ export async function generateSmartQuery(item: string, lat: number, lon: number)
     Don't include any extra text, just the search query.
   `;
 
-  const request = {
-    model: "models/gemini-1.5-flash",
-    contents: [
-      {
-        parts: [
-          {
-            text: prompt,
-          },
-        ],
-      },
-    ],
-  };
-  const [response] = (await client.generateContent(request)) as any;
-  return response.candidates?.[0]?.content?.parts?.[0]?.text || "מבצעים ";
+  try {
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    return response.text() || "מבצעים ";
+  } catch (err: any) {
+    console.error("Generate smart query failed:", err.message);
+    return "מבצעים "; // Fallback query
+  }
 }
 
 export async function analyzeSearchResults(searchResults: any[], item: string): Promise<{ description: string; link: string | null }> {
@@ -140,22 +121,11 @@ export async function analyzeSearchResults(searchResults: any[], item: string): 
     ${searchResultText}
   `;
 
-  const request = {
-    model: "models/gemini-1.5-flash",
-    contents: [
-      {
-        parts: [
-          {
-            text: prompt,
-          },
-        ],
-      },
-    ],
-  };
-  
   try {
-    const [response] = (await client.generateContent(request)) as any;
-    const text = response.candidates?.[0]?.content?.parts?.[0]?.text;
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+
     if (!text) throw new Error("No text returned from AI");
 
     let cleanText = text.trim().replace(/```json\s*/g, "").replace(/```\s*$/g, "");
