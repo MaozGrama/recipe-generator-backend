@@ -29,7 +29,7 @@ router.post("/signup", async (req, res) => {
     );
     res.json({ token, username: user.username });
   } catch (err) {
-    console.error("Signup error:", (err as Error).stack); // Type assertion to Error
+    console.error("Signup error:", (err as Error).stack);
     if ((err as Error).name === "ValidationError") {
       return res.status(400).json({ error: (err as Error).message });
     }
@@ -91,6 +91,30 @@ router.post("/ratings", async (req, res) => {
     }
     res.status(500).json({ error: (err as Error).message || "Failed to set rating" });
   }
+});
+
+router.get("/me", async (req, res) => {
+  const token = req.headers.authorization?.split(" ")[1];
+  if (!token) return res.status(401).json({ error: "No token provided" });
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "your-secret-key") as { id: string };
+    const user = await User.findById(decoded.id).select("-password");
+    if (!user) return res.status(404).json({ error: "User not found" });
+    res.json({ success: true, user: { id: user._id, email: user.email, username: user.username, favorites: user.favorites, ratings: user.ratings } });
+  } catch (err) {
+    console.error("Me error:", (err as Error).stack);
+    if ((err as Error).name === "JsonWebTokenError") {
+      return res.status(401).json({ error: "Invalid token" });
+    }
+    res.status(500).json({ error: (err as Error).message || "Failed to fetch user data" });
+  }
+});
+
+router.post("/logout", (req, res) => {
+  const token = req.headers.authorization?.split(" ")[1];
+  if (!token) return res.status(401).json({ error: "No token provided" });
+  res.json({ success: true, message: "Logged out successfully" });
 });
 
 export default router;
