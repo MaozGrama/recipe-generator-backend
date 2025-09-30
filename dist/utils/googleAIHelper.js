@@ -39,7 +39,7 @@ IMPORTANT: Respond with ONLY valid JSON in this exact format:
 Do not include any text before or after the JSON. Only return the JSON array.`;
     try {
         const request = {
-            model: "models/gemini-1.5-flash-8b",
+            model: "models/gemini-2.5-flash",
             contents: [
                 {
                     parts: [
